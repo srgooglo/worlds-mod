@@ -44,6 +44,11 @@ public class WorldsModInitializer implements ModInitializer {
 				for (File dimension_dir : ModConfigs.dimensions_dir.listFiles()) {
 					for (File dimension_file : dimension_dir.listFiles()) {
 						String id = dimension_dir.getName() + ":" + dimension_file.getName().replace(".json", "");
+
+						if (id.startsWith("minecraft:")) {
+							continue;
+						}
+
 						System.out.println("Found saved world " + id);
 
 						Handlers.regenerateDimensionsFromFile(server, dimension_file);

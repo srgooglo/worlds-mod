@@ -44,7 +44,7 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-	modImplementation "xyz.nucleoid:fantasy:0.5.0+1.20.4"
+	modImplementation "xyz.nucleoid:fantasy:0.4.11+1.20-rc1"
 }
 
 processResources {
