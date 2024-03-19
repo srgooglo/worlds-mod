@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "worlds",
+	"version": "${version}",
+	"name": "worlds",
+	"description": "Multiverse plugin but actually is a fabric mod.",
+	"authors": [
+		"SrGooglo"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/worlds/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.worlds.WorldsModInitializer"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.15.7",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
