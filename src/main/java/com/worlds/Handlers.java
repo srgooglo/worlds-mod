@@ -1,12 +1,14 @@
 package com.worlds;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
 import com.mojang.brigadier.Command;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -18,6 +20,8 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
+import net.minecraft.world.GameMode;
+import net.minecraft.world.GameRules;
 
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
@@ -50,15 +54,15 @@ public class Handlers {
         }
 
         ServerWorld targetWorld = worlds.get(worldID);
+        BlockPos spawnPoint = null;
 
         String namespace = worldID.split(":")[0];
         String path = worldID.split(":")[1];
 
         ConfigurationFile worldConfig = ModConfigs.getWorldConfig(namespace, path);
 
-        BlockPos spawnPoint = null;
-
         String savedSpawnPoint = worldConfig.get("spawnpoint");
+        String savedGamemode = worldConfig.get("gamemode");
 
         if (savedSpawnPoint != null) {
             spawnPoint = BlockPos.fromLong(Long.parseLong(savedSpawnPoint));
@@ -74,7 +78,30 @@ public class Handlers {
                 0f,
                 0f);
 
+        WorldsModInitializer.LOGGER.info("Player " + player.getGameProfile().getName() + " is traveling to " + worldID);
         player.sendMessage(text_plain("Traveling to " + worldID), false);
+
+        if (savedGamemode != null) {
+            ServerPlayerInteractionManager serverPlayerInteractionManager = new ServerPlayerInteractionManager(player);
+            GameMode targetGameMode = null;
+
+            if (savedGamemode.equalsIgnoreCase("survival")) {
+                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'survival'");
+                targetGameMode = GameMode.SURVIVAL;
+            }
+
+            if (savedGamemode.equalsIgnoreCase("creative")) {
+                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'creative'");
+                targetGameMode = GameMode.CREATIVE;
+            }
+
+            if (savedGamemode.equalsIgnoreCase("adventure")) {
+                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'adventure'");
+                targetGameMode = GameMode.ADVENTURE;
+            }
+
+            serverPlayerInteractionManager.changeGameMode(targetGameMode);
+        }
 
         FabricDimensions.teleport(player, targetWorld, teleportTarget);
 
@@ -97,34 +124,23 @@ public class Handlers {
             return Command.SINGLE_SUCCESS;
         }
 
+        String dimensionType = Utils.getDimensionStringFromShortString(args[2]);
+
         String worldID = args[1];
-        ChunkGenerator gen = null;
-        Identifier dim = null;
+        ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
+        Identifier dim = Utils.getDimensionIdentifierFromString(dimensionType);
         long seed = 0;
 
+        // if id is incomplete, add "worlds_dimensions:"
         if (worldID.indexOf(":") == -1) {
             worldID = "worlds_dimensions:" + worldID;
         }
 
+        // If user not specified seed, generate a random one
         if (args[3] != null) {
             seed = Long.parseLong(args[3]);
         } else {
             seed = new Random().nextLong();
-        }
-
-        if (args[2].contains("NORMAL")) {
-            gen = mc_server.getWorld(World.OVERWORLD).getChunkManager().getChunkGenerator();
-            dim = Util.OVERWORLD_ID;
-        }
-
-        if (args[2].contains("NETHER")) {
-            gen = mc_server.getWorld(World.NETHER).getChunkManager().getChunkGenerator();
-            dim = Util.THE_NETHER_ID;
-        }
-
-        if (args[2].contains("END")) {
-            gen = mc_server.getWorld(World.END).getChunkManager().getChunkGenerator();
-            dim = Util.THE_END_ID;
         }
 
         WorldsModInitializer.LOGGER
@@ -137,7 +153,8 @@ public class Handlers {
                 .setDimensionType(dim_of(dim))
                 .setDifficulty(Difficulty.NORMAL)
                 .setGenerator(gen)
-                .setSeed(seed);
+                .setSeed(seed)
+                .setShouldTickTime(true);
 
         RuntimeWorldHandle worldHandle = fantasy.getOrOpenPersistentWorld(new Identifier(worldID), config);
 
@@ -176,36 +193,18 @@ public class Handlers {
     public static int regenerateDimensionsFromFile(MinecraftServer mc_server, File file) {
         ConfigurationFile worldConfig = new ConfigurationFile(file);
 
-        String namespace = worldConfig.get("namespace");
-        String path = worldConfig.get("path");
+        Identifier worldID = new Identifier(worldConfig.get("namespace") + ":" + worldConfig.get("path"));
 
-        Identifier worldID = new Identifier(namespace + ":" + path);
-
-        String generationType = worldConfig.get("environment");
+        String dimensionType = worldConfig.get("environment");
         long seed = Long.parseLong(worldConfig.get("seed"));
-        // String difficulty = worldConfig.get("difficulty");
+        Difficulty difficulty = Utils.getDifficultyFromString(worldConfig.get("difficulty"));
 
-        ChunkGenerator gen = null;
-        Identifier dim = null;
-
-        if (generationType.equalsIgnoreCase("minecraft:overworld")) {
-            gen = mc_server.getWorld(World.OVERWORLD).getChunkManager().getChunkGenerator();
-            dim = Util.OVERWORLD_ID;
-        }
-
-        if (generationType.equalsIgnoreCase("minecraft:the_nether")) {
-            gen = mc_server.getWorld(World.NETHER).getChunkManager().getChunkGenerator();
-            dim = Util.THE_NETHER_ID;
-        }
-
-        if (generationType.equalsIgnoreCase("minecraft:the_end")) {
-            gen = mc_server.getWorld(World.END).getChunkManager().getChunkGenerator();
-            dim = Util.THE_END_ID;
-        }
+        ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
+        Identifier dim = Utils.getDimensionIdentifierFromString(dimensionType);
 
         if (gen == null || dim == null) {
             WorldsModInitializer.LOGGER.warn("Failed to regenerate world dimension [" + worldID
-                    + "] from file. Bad environment type > " + generationType);
+                    + "] from file. Bad environment type > " + dimensionType);
             return 0;
         }
 
@@ -213,9 +212,10 @@ public class Handlers {
 
         RuntimeWorldConfig config = new RuntimeWorldConfig()
                 .setDimensionType(dim_of(dim))
-                .setDifficulty(Difficulty.NORMAL)
+                .setDifficulty(difficulty)
                 .setGenerator(gen)
-                .setSeed(seed);
+                .setSeed(seed)
+                .setShouldTickTime(true);
 
         fantasy.getOrOpenPersistentWorld(worldID, config);
 

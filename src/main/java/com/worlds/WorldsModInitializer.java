@@ -5,6 +5,7 @@ import java.io.File;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +37,11 @@ public class WorldsModInitializer implements ModInitializer {
 		ModConfigs.initialize();
 
 		// when server starts set server_instance
-		ServerLifecycleEvents.SERVER_STARTED.register((server) -> {
+		ServerLifecycleEvents.SERVER_STARTING.register((server) -> {
 			server_instance = server;
+		});
 
-			// try to read configs
+		ServerWorldEvents.LOAD.register((server, world) -> {
 			if (ModConfigs.dimensions_dir.exists()) {
 				for (File dimension_dir : ModConfigs.dimensions_dir.listFiles()) {
 					for (File dimension_file : dimension_dir.listFiles()) {
@@ -49,7 +51,7 @@ public class WorldsModInitializer implements ModInitializer {
 							continue;
 						}
 
-						System.out.println("Found saved world " + id);
+						WorldsModInitializer.LOGGER.info("Found saved world " + id);
 
 						Handlers.regenerateDimensionsFromFile(server, dimension_file);
 					}

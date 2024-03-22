@@ -16,7 +16,6 @@ loom {
 	mods {
 		"worlds" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
 		}
 	}
 }
