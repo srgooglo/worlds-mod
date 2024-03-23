@@ -40,4 +40,18 @@ public class ModConfigs {
 
         return config;
     }
+
+    public static void removeWorldConfig(String namespace, String path) {
+        // dimensions_dir, namespace + path + ".json";
+        String finalDir = dimensions_dir + "/" + namespace;
+        String finalPathname = finalDir + "/" + path + ".json";
+
+        if (new File(finalPathname).exists()) {
+            new File(finalPathname).delete();
+        }
+
+        if (new File(finalDir).exists()) {
+            new File(finalPathname).delete();
+        }
+    }
 }

@@ -17,26 +17,25 @@ public class PublicCommands {
     public PublicCommands(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(
                 literal(WorldsModInitializer.public_cmd_prefix)
-                        // .requires((s) -> s.hasPermissionLevel(1))
                         .then(argument("message", greedyString()).executes((ctx) -> {
-                            return handleCommand(getString(ctx, "message").split(" "), ctx.getSource().getPlayer());
+                            return handleCommand(getString(ctx, "message").split(" "), ctx.getSource());
                         })));
     }
 
-    private int handleCommand(String[] args, ServerPlayerEntity player) {
+    private int handleCommand(String[] args, ServerCommandSource source) {
         if (args[0].equalsIgnoreCase("list")) {
-            return Handlers.list(WorldsModInitializer.server_instance, player);
+            return Handlers.list(WorldsModInitializer.server_instance, source);
         }
 
         if (args[0].equalsIgnoreCase("tp")) {
-            return Handlers.tp(WorldsModInitializer.server_instance, player, args);
+            return Handlers.tp(WorldsModInitializer.server_instance, source, args);
         }
 
         if (args[0].equalsIgnoreCase("current")) {
-            return Handlers.sendCurrentPlayerWorld(WorldsModInitializer.server_instance, player);
+            return Handlers.sendCurrentPlayerWorld(WorldsModInitializer.server_instance, source);
         }
 
-        player.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]), false);
+        source.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]));
 
         return Command.SINGLE_SUCCESS;
     }

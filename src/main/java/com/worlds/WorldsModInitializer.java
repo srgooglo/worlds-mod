@@ -13,8 +13,11 @@ import org.slf4j.LoggerFactory;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
+import xyz.nucleoid.fantasy.Fantasy;
 
 import com.mojang.brigadier.CommandDispatcher;
+
+import static net.minecraft.server.command.CommandManager.literal;
 
 import com.worlds.commands.*;
 
@@ -29,6 +32,8 @@ public class WorldsModInitializer implements ModInitializer {
 
 	public static MinecraftServer server_instance;
 
+	public static Fantasy fantasy;
+
 	@Override
 	public void onInitialize() {
 		LOGGER.info("Initializing worlds mod...");
@@ -39,6 +44,7 @@ public class WorldsModInitializer implements ModInitializer {
 		// when server starts set server_instance
 		ServerLifecycleEvents.SERVER_STARTING.register((server) -> {
 			server_instance = server;
+			fantasy = Fantasy.get(server);
 		});
 
 		ServerWorldEvents.LOAD.register((server, world) -> {
@@ -61,6 +67,20 @@ public class WorldsModInitializer implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			WorldsModInitializer.registerCommands(dispatcher);
+
+			dispatcher.register(literal("w").executes((ctx) -> {
+				ServerCommandSource source = ctx.getSource();
+
+				source.sendMessage(text_plain("comeme el donus"));
+
+				return 1;
+			}));
+
+			dispatcher.register(literal("wa").executes((ctx) -> {
+				server_instance.sendMessage(text_plain("comeme el donus"));
+
+				return 1;
+			}));
 		});
 	}
 

@@ -1,12 +1,12 @@
 package com.worlds;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
 import com.mojang.brigadier.Command;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.util.Identifier;
@@ -21,7 +21,6 @@ import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.GameMode;
-import net.minecraft.world.GameRules;
 
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
@@ -33,7 +32,9 @@ import static com.worlds.WorldsModInitializer.text_plain;
 import com.worlds.config.ConfigurationFile;
 
 public class Handlers {
-    public static int tp(MinecraftServer mc_server, ServerPlayerEntity player, String[] args) {
+    public static int tp(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+        ServerPlayerEntity player = source.getPlayer();
+
         HashMap<String, ServerWorld> worlds = new HashMap<>();
 
         mc_server.getWorldRegistryKeys().forEach((r) -> {
@@ -83,22 +84,9 @@ public class Handlers {
 
         if (savedGamemode != null) {
             ServerPlayerInteractionManager serverPlayerInteractionManager = new ServerPlayerInteractionManager(player);
-            GameMode targetGameMode = null;
+            GameMode targetGameMode = Utils.getGameModeFromString(savedGamemode);
 
-            if (savedGamemode.equalsIgnoreCase("survival")) {
-                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'survival'");
-                targetGameMode = GameMode.SURVIVAL;
-            }
-
-            if (savedGamemode.equalsIgnoreCase("creative")) {
-                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'creative'");
-                targetGameMode = GameMode.CREATIVE;
-            }
-
-            if (savedGamemode.equalsIgnoreCase("adventure")) {
-                WorldsModInitializer.LOGGER.info("Using saved default gamemode 'adventure'");
-                targetGameMode = GameMode.ADVENTURE;
-            }
+            WorldsModInitializer.LOGGER.info("Using saved default gamemode " + savedGamemode);
 
             serverPlayerInteractionManager.changeGameMode(targetGameMode);
         }
@@ -108,7 +96,9 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int list(MinecraftServer mc_server, ServerPlayerEntity player) {
+    public static int list(MinecraftServer mc_server, ServerCommandSource source) {
+        ServerPlayerEntity player = source.getPlayer();
+
         mc_server.getWorlds().forEach((world) -> {
             String name = world.getRegistryKey().getValue().toString();
 
@@ -118,9 +108,9 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int createNew(MinecraftServer mc_server, ServerPlayerEntity player, String[] args) {
+    public static int createNew(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
         if (args.length == 1 || args.length == 2) {
-            player.sendMessage(text_plain("Missing arguments; Use <world_name> <type> <seed[optional]>"), false);
+            source.sendMessage(text_plain("Missing arguments; Use <world_name> <type> <seed[optional]>"));
             return Command.SINGLE_SUCCESS;
         }
 
@@ -145,7 +135,7 @@ public class Handlers {
 
         WorldsModInitializer.LOGGER
                 .info("Creating new world with params > worldID:" + worldID + " type:" + args[2] + " seed:" + seed);
-        player.sendMessage(text_plain("Creating new world, please wait..."), false);
+        source.sendMessage(text_plain("Creating new world, please wait..."));
 
         Fantasy fantasy = Fantasy.get(mc_server);
 
@@ -163,12 +153,65 @@ public class Handlers {
         saveNewConfig(world, dim, seed);
 
         WorldsModInitializer.LOGGER.info("World created and saved...");
-        player.sendMessage(text_plain("World created !"), false);
+        source.sendMessage(text_plain("World created !"));
 
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int setWorldSpawn(MinecraftServer mc_server, ServerPlayerEntity player) {
+    public static int deleteWorld(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+        if (args[1] == null) {
+            source.sendMessage(text_plain("Missing arguments; Use <world_name>"));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        String namespace = args[1].split(":")[0];
+        String path = args[1].split(":")[1];
+
+        ConfigurationFile worldConfig = ModConfigs.getWorldConfig(namespace, path);
+        
+        if (worldConfig == null) {
+            source.sendMessage(text_plain("World not found"));
+            return Command.SINGLE_SUCCESS;
+        }
+
+        Identifier worldID = new Identifier(namespace, path);
+
+        String dimensionType = worldConfig.get("environment");
+        long seed = Long.parseLong(worldConfig.get("seed"));
+        Difficulty difficulty = Utils.getDifficultyFromString(worldConfig.get("difficulty"));
+
+        ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
+        Identifier dim = Utils.getDimensionIdentifierFromString(dimensionType);
+
+        if (gen == null || dim == null) {
+            WorldsModInitializer.LOGGER.warn("Failed to regenerate world dimension [" + worldID
+                    + "] from file. Bad environment type > " + dimensionType);
+            return 0;
+        }
+
+        RuntimeWorldConfig config = new RuntimeWorldConfig()
+        .setDimensionType(dim_of(dim))
+        .setDifficulty(difficulty)
+        .setGenerator(gen)
+        .setSeed(seed)
+        .setShouldTickTime(true);
+
+        RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
+
+        worldHandle.delete();
+
+        //remove config
+        ModConfigs.removeWorldConfig(namespace, path);
+
+        WorldsModInitializer.LOGGER.info("World ["+worldID+"] deleted...");
+        source.sendMessage(text_plain("World deleted !"));
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    public static int setWorldSpawn(MinecraftServer mc_server, ServerCommandSource source) {
+        ServerPlayerEntity player = source.getPlayer();
+
         World currentWorld = player.getWorld();
         BlockPos currentPos = player.getBlockPos();
 
@@ -185,7 +228,7 @@ public class Handlers {
         worldConfig.save();
 
         WorldsModInitializer.LOGGER.info("World spawn updated to " + currentPos.toString() + "");
-        player.sendMessage(text_plain("World spawn updated to " + currentPos.toString() + ""), false);
+        source.sendMessage(text_plain("World spawn updated to " + currentPos.toString() + ""));
 
         return Command.SINGLE_SUCCESS;
     }
@@ -224,7 +267,13 @@ public class Handlers {
         return 0;
     }
 
-    static public int sendCurrentPlayerWorld(MinecraftServer mc_server, ServerPlayerEntity player) {
+    static public int sendCurrentPlayerWorld(MinecraftServer mc_server, ServerCommandSource source) {
+        if (source.getPlayer() == null) {
+            return 0;
+        }
+
+        ServerPlayerEntity player = source.getPlayer();
+
         World currentWorld = player.getWorld();
         BlockPos currentPos = player.getBlockPos();
 

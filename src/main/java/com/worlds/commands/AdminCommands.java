@@ -7,16 +7,10 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
 import static com.mojang.brigadier.arguments.StringArgumentType.getString;
 import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
-
-// import java.util.Map;
-// import java.util.HashMap;
-// import java.util.function.BiConsumer;
-// import java.util.function.Consumer;
 
 public class AdminCommands {
     public AdminCommands(CommandDispatcher<ServerCommandSource> dispatcher) {
@@ -24,30 +18,25 @@ public class AdminCommands {
                 literal(WorldsModInitializer.admin_cmd_prefix)
                         .requires((s) -> s.hasPermissionLevel(1))
                         .then(argument("message", greedyString()).executes((ctx) -> {
-                            return handleCommand(getString(ctx, "message").split(" "), ctx.getSource().getPlayer());
+                            return handleCommand(getString(ctx, "message").split(" "), ctx.getSource());
                         })));
     }
 
-    private int handleCommand(String[] args, ServerPlayerEntity player) {
+    private int handleCommand(String[] args, ServerCommandSource source) {
         if (args[0].equalsIgnoreCase("create")) {
-            return Handlers.createNew(WorldsModInitializer.server_instance, player, args);
+            return Handlers.createNew(WorldsModInitializer.server_instance, source, args);
+        }
+
+        if (args[0].equalsIgnoreCase("delete")) {
+            return Handlers.deleteWorld(WorldsModInitializer.server_instance, source, args);
         }
 
         if (args[0].equalsIgnoreCase("setWorldSpawn")) {
-            return Handlers.setWorldSpawn(WorldsModInitializer.server_instance, player);
+            return Handlers.setWorldSpawn(WorldsModInitializer.server_instance, source);
         }
 
-        player.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]), false);
+        source.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]));
 
         return Command.SINGLE_SUCCESS;
     }
-
-    // Map<String, BiConsumer<String[], ServerPlayerEntity>> commands = new
-    // HashMap<>() {
-    // {
-    // put("create", (String[] args, ServerPlayerEntity player) -> {
-    // Handlers.createNew(Worlds.server_instance, player, args);
-    // });
-    // }
-    // };
 }
