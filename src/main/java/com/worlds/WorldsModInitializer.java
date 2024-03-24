@@ -17,8 +17,6 @@ import xyz.nucleoid.fantasy.Fantasy;
 
 import com.mojang.brigadier.CommandDispatcher;
 
-import static net.minecraft.server.command.CommandManager.literal;
-
 import com.worlds.commands.*;
 
 public class WorldsModInitializer implements ModInitializer {
@@ -67,20 +65,6 @@ public class WorldsModInitializer implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			WorldsModInitializer.registerCommands(dispatcher);
-
-			dispatcher.register(literal("w").executes((ctx) -> {
-				ServerCommandSource source = ctx.getSource();
-
-				source.sendMessage(text_plain("comeme el donus"));
-
-				return 1;
-			}));
-
-			dispatcher.register(literal("wa").executes((ctx) -> {
-				server_instance.sendMessage(text_plain("comeme el donus"));
-
-				return 1;
-			}));
 		});
 	}
 
