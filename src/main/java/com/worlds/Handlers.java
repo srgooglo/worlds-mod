@@ -22,7 +22,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.GameMode;
 
-import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
 import xyz.nucleoid.fantasy.RuntimeWorldHandle;
 
@@ -137,8 +136,6 @@ public class Handlers {
                 .info("Creating new world with params > worldID:" + worldID + " type:" + args[2] + " seed:" + seed);
         source.sendMessage(text_plain("Creating new world, please wait..."));
 
-        Fantasy fantasy = Fantasy.get(mc_server);
-
         RuntimeWorldConfig config = new RuntimeWorldConfig()
                 .setDimensionType(dim_of(dim))
                 .setDifficulty(Difficulty.NORMAL)
@@ -146,7 +143,8 @@ public class Handlers {
                 .setSeed(seed)
                 .setShouldTickTime(true);
 
-        RuntimeWorldHandle worldHandle = fantasy.getOrOpenPersistentWorld(new Identifier(worldID), config);
+        RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(new Identifier(worldID),
+                config);
 
         ServerWorld world = worldHandle.asWorld();
 
@@ -168,7 +166,7 @@ public class Handlers {
         String path = args[1].split(":")[1];
 
         ConfigurationFile worldConfig = ModConfigs.getWorldConfig(namespace, path);
-        
+
         if (worldConfig == null) {
             source.sendMessage(text_plain("World not found"));
             return Command.SINGLE_SUCCESS;
@@ -190,20 +188,20 @@ public class Handlers {
         }
 
         RuntimeWorldConfig config = new RuntimeWorldConfig()
-        .setDimensionType(dim_of(dim))
-        .setDifficulty(difficulty)
-        .setGenerator(gen)
-        .setSeed(seed)
-        .setShouldTickTime(true);
+                .setDimensionType(dim_of(dim))
+                .setDifficulty(difficulty)
+                .setGenerator(gen)
+                .setSeed(seed)
+                .setShouldTickTime(true);
 
         RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
 
         worldHandle.delete();
 
-        //remove config
+        // remove config
         ModConfigs.removeWorldConfig(namespace, path);
 
-        WorldsModInitializer.LOGGER.info("World ["+worldID+"] deleted...");
+        WorldsModInitializer.LOGGER.info("World [" + worldID + "] deleted...");
         source.sendMessage(text_plain("World deleted !"));
 
         return Command.SINGLE_SUCCESS;
@@ -239,7 +237,7 @@ public class Handlers {
         Identifier worldID = new Identifier(worldConfig.get("namespace") + ":" + worldConfig.get("path"));
 
         String dimensionType = worldConfig.get("environment");
-        long seed = Long.parseLong(worldConfig.get("seed"));
+        Long seed = Long.parseLong(worldConfig.get("seed"));
         Difficulty difficulty = Utils.getDifficultyFromString(worldConfig.get("difficulty"));
 
         ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
@@ -251,7 +249,10 @@ public class Handlers {
             return 0;
         }
 
-        Fantasy fantasy = Fantasy.get(mc_server);
+        WorldsModInitializer.LOGGER.info("Regenerating dimension [" + worldID + "] from file...");
+        WorldsModInitializer.LOGGER.info("Environment: " + dimensionType);
+        WorldsModInitializer.LOGGER.info("Seed: " + seed);
+        WorldsModInitializer.LOGGER.info("Difficulty: " + difficulty);
 
         RuntimeWorldConfig config = new RuntimeWorldConfig()
                 .setDimensionType(dim_of(dim))
@@ -260,7 +261,7 @@ public class Handlers {
                 .setSeed(seed)
                 .setShouldTickTime(true);
 
-        fantasy.getOrOpenPersistentWorld(worldID, config);
+        WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
 
         WorldsModInitializer.LOGGER.info("Dimension [" + worldID + "] regenerated from file.");
 
