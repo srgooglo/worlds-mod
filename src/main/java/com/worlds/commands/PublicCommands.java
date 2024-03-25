@@ -23,15 +23,19 @@ public class PublicCommands {
 
     private int handleCommand(String[] args, ServerCommandSource source) {
         if (args[0].equalsIgnoreCase("list")) {
-            return Handlers.list(WorldsModInitializer.server_instance, source);
+            return Handlers.CMD_ListWorlds(WorldsModInitializer.server_instance, source);
         }
 
         if (args[0].equalsIgnoreCase("tp")) {
-            return Handlers.tp(WorldsModInitializer.server_instance, source, args);
+            return Handlers.CMD_PlayerTeleport(WorldsModInitializer.server_instance, source, args);
+        }
+
+        if (args[0].equalsIgnoreCase("spawn")) {
+            return Handlers.CMD_TeleportToSpawn(WorldsModInitializer.server_instance, source);
         }
 
         if (args[0].equalsIgnoreCase("current")) {
-            return Handlers.sendCurrentPlayerWorld(WorldsModInitializer.server_instance, source);
+            return Handlers.CMD_SendCurrentPlayerWorld(WorldsModInitializer.server_instance, source);
         }
 
         source.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]));

@@ -1,7 +1,6 @@
 package com.worlds;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Random;
 
 import com.mojang.brigadier.Command;
@@ -31,33 +30,50 @@ import static com.worlds.WorldsModInitializer.text_plain;
 import com.worlds.config.ConfigurationFile;
 
 public class Handlers {
-    public static int tp(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+    public static int CMD_TeleportToSpawn(MinecraftServer mc_server, ServerCommandSource source) {
         ServerPlayerEntity player = source.getPlayer();
 
-        HashMap<String, ServerWorld> worlds = new HashMap<>();
-
-        mc_server.getWorldRegistryKeys().forEach((r) -> {
-            ServerWorld world = mc_server.getWorld(r);
-            worlds.put(r.getValue().toString(), world);
-        });
-
-        String worldID = args[1];
-
-        if (worldID.indexOf(":") == -1) {
-            worldID = "worlds_dimensions:" + worldID;
+        if (player == null) {
+            return 0;
         }
 
-        if (!worlds.containsKey(worldID)) {
-            player.sendMessage(text_plain("Cannot find world: " + worldID), false);
+        Identifier currentWorldID = Utils.getCurrentPlayerWorldID(mc_server, source);
+
+        if (currentWorldID == null) {
+            player.sendMessage(text_plain("Cannot find current world"), false);
+            return Command.SINGLE_SUCCESS;
+        }
+
+        return CMD_PlayerTeleport(mc_server, source, new String[] { "tp", currentWorldID.toString() });
+    }
+
+    public static int CMD_PlayerTeleport(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+        ServerPlayerEntity player = source.getPlayer();
+
+        if (player == null) {
+            return 0;
+        }
+
+        String world_id_string = args[1];
+
+        if (world_id_string.indexOf(":") == -1) {
+            world_id_string = "worlds_dimensions:" + world_id_string;
+        }
+
+        Identifier worldID = new Identifier(world_id_string);
+
+        ServerWorld targetWorld = Utils.getServerWorldByID(worldID);
+
+        if (targetWorld == null) {
+            player.sendMessage(text_plain("Cannot find world: " + worldID.toString()), false);
 
             return Command.SINGLE_SUCCESS;
         }
 
-        ServerWorld targetWorld = worlds.get(worldID);
         BlockPos spawnPoint = null;
 
-        String namespace = worldID.split(":")[0];
-        String path = worldID.split(":")[1];
+        String namespace = world_id_string.split(":")[0];
+        String path = world_id_string.split(":")[1];
 
         ConfigurationFile worldConfig = ModConfigs.getWorldConfig(namespace, path);
 
@@ -78,8 +94,9 @@ public class Handlers {
                 0f,
                 0f);
 
-        WorldsModInitializer.LOGGER.info("Player " + player.getGameProfile().getName() + " is traveling to " + worldID);
-        player.sendMessage(text_plain("Traveling to " + worldID), false);
+        WorldsModInitializer.LOGGER
+                .info("Player " + player.getGameProfile().getName() + " is traveling to " + worldID.toString());
+        player.sendMessage(text_plain("Traveling to " + worldID.toString()), false);
 
         if (savedGamemode != null) {
             ServerPlayerInteractionManager serverPlayerInteractionManager = new ServerPlayerInteractionManager(player);
@@ -95,19 +112,17 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int list(MinecraftServer mc_server, ServerCommandSource source) {
-        ServerPlayerEntity player = source.getPlayer();
+    public static int CMD_ListWorlds(MinecraftServer mc_server, ServerCommandSource source) {
+        source.sendMessage(text_plain("Avaliable Worlds:"));
 
-        mc_server.getWorlds().forEach((world) -> {
-            String name = world.getRegistryKey().getValue().toString();
-
-            player.sendMessage(text_plain("- " + name), false);
+        Utils.getServerWorlds().forEach((worldID, world) -> {
+            source.sendMessage(text_plain("- " + worldID.toString()));
         });
 
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int createNew(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+    public static int CMD_CreateNewWorld(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
         if (args.length == 1 || args.length == 2) {
             source.sendMessage(text_plain("Missing arguments; Use <world_name> <type> <seed[optional]>"));
             return Command.SINGLE_SUCCESS;
@@ -115,15 +130,17 @@ public class Handlers {
 
         String dimensionType = Utils.getDimensionStringFromShortString(args[2]);
 
-        String worldID = args[1];
+        String world_id_string = args[1];
         ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
         Identifier dim = Utils.getDimensionIdentifierFromString(dimensionType);
         long seed = 0;
 
         // if id is incomplete, add "worlds_dimensions:"
-        if (worldID.indexOf(":") == -1) {
-            worldID = "worlds_dimensions:" + worldID;
+        if (world_id_string.indexOf(":") == -1) {
+            world_id_string = "worlds_dimensions:" + world_id_string;
         }
+
+        Identifier worldID = new Identifier(world_id_string);
 
         // If user not specified seed, generate a random one
         if (args[3] != null) {
@@ -132,8 +149,13 @@ public class Handlers {
             seed = new Random().nextLong();
         }
 
-        WorldsModInitializer.LOGGER
-                .info("Creating new world with params > worldID:" + worldID + " type:" + args[2] + " seed:" + seed);
+        WorldsModInitializer.LOGGER.info("Creating new world with params >");
+
+        WorldsModInitializer.LOGGER.info("ID: " + worldID);
+        WorldsModInitializer.LOGGER.info("Seed: " + seed);
+        WorldsModInitializer.LOGGER.info("Dimension: " + dim);
+        WorldsModInitializer.LOGGER.info("Generator: " + gen);
+
         source.sendMessage(text_plain("Creating new world, please wait..."));
 
         RuntimeWorldConfig config = new RuntimeWorldConfig()
@@ -143,12 +165,11 @@ public class Handlers {
                 .setSeed(seed)
                 .setShouldTickTime(true);
 
-        RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(new Identifier(worldID),
-                config);
+        RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
 
-        ServerWorld world = worldHandle.asWorld();
+        WorldsModInitializer.worlds_handlers.put(worldID, worldHandle);
 
-        saveNewConfig(world, dim, seed);
+        saveNewConfig(worldHandle.asWorld(), dim, seed);
 
         WorldsModInitializer.LOGGER.info("World created and saved...");
         source.sendMessage(text_plain("World created !"));
@@ -156,7 +177,7 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int deleteWorld(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
+    public static int CMD_DeleteWorld(MinecraftServer mc_server, ServerCommandSource source, String[] args) {
         if (args[1] == null) {
             source.sendMessage(text_plain("Missing arguments; Use <world_name>"));
             return Command.SINGLE_SUCCESS;
@@ -174,32 +195,18 @@ public class Handlers {
 
         Identifier worldID = new Identifier(namespace, path);
 
-        String dimensionType = worldConfig.get("environment");
-        long seed = Long.parseLong(worldConfig.get("seed"));
-        Difficulty difficulty = Utils.getDifficultyFromString(worldConfig.get("difficulty"));
+        RuntimeWorldHandle worldHandle = WorldsModInitializer.worlds_handlers.get(worldID);
 
-        ChunkGenerator gen = Utils.getWorldChunkGeneratorFromString(dimensionType);
-        Identifier dim = Utils.getDimensionIdentifierFromString(dimensionType);
-
-        if (gen == null || dim == null) {
-            WorldsModInitializer.LOGGER.warn("Failed to regenerate world dimension [" + worldID
-                    + "] from file. Bad environment type > " + dimensionType);
-            return 0;
+        if (worldHandle == null) {
+            source.sendMessage(text_plain("World not found"));
+            return Command.SINGLE_SUCCESS;
         }
-
-        RuntimeWorldConfig config = new RuntimeWorldConfig()
-                .setDimensionType(dim_of(dim))
-                .setDifficulty(difficulty)
-                .setGenerator(gen)
-                .setSeed(seed)
-                .setShouldTickTime(true);
-
-        RuntimeWorldHandle worldHandle = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
 
         worldHandle.delete();
 
-        // remove config
         ModConfigs.removeWorldConfig(namespace, path);
+
+        WorldsModInitializer.worlds_handlers.remove(worldID);
 
         WorldsModInitializer.LOGGER.info("World [" + worldID + "] deleted...");
         source.sendMessage(text_plain("World deleted !"));
@@ -207,7 +214,7 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
-    public static int setWorldSpawn(MinecraftServer mc_server, ServerCommandSource source) {
+    public static int CMD_SetWorldSpawn(MinecraftServer mc_server, ServerCommandSource source) {
         ServerPlayerEntity player = source.getPlayer();
 
         World currentWorld = player.getWorld();
@@ -231,6 +238,25 @@ public class Handlers {
         return Command.SINGLE_SUCCESS;
     }
 
+    static public int CMD_SendCurrentPlayerWorld(MinecraftServer mc_server, ServerCommandSource source) {
+        ServerPlayerEntity player = source.getPlayer();
+
+        if (player == null) {
+            return 0;
+        }
+
+        World currentWorld = Utils.getCurrentPlayerWorld(mc_server, source);
+        BlockPos currentPos = Utils.getCurrentPlayerPos(mc_server, source);
+
+        String namespace = currentWorld.getRegistryKey().getValue().getNamespace().toString();
+        String path = currentWorld.getRegistryKey().getValue().getPath().toString();
+
+        player.sendMessage(text_plain("Current world: " + namespace + ":" + path), false);
+        player.sendMessage(text_plain("Current position: " + currentPos.toString()), false);
+
+        return Command.SINGLE_SUCCESS;
+    }
+
     public static int regenerateDimensionsFromFile(MinecraftServer mc_server, File file) {
         ConfigurationFile worldConfig = new ConfigurationFile(file);
 
@@ -249,42 +275,26 @@ public class Handlers {
             return 0;
         }
 
-        WorldsModInitializer.LOGGER.info("Regenerating dimension [" + worldID + "] from file...");
-        WorldsModInitializer.LOGGER.info("Environment: " + dimensionType);
-        WorldsModInitializer.LOGGER.info("Seed: " + seed);
-        WorldsModInitializer.LOGGER.info("Difficulty: " + difficulty);
-
         RuntimeWorldConfig config = new RuntimeWorldConfig()
+                .setSeed(seed)
                 .setDimensionType(dim_of(dim))
                 .setDifficulty(difficulty)
                 .setGenerator(gen)
                 .setSeed(seed)
                 .setShouldTickTime(true);
 
-        WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
+        WorldsModInitializer.LOGGER.info("Regenerating dimension [" + worldID + "] from file...");
+        WorldsModInitializer.LOGGER.info("Environment: " + dimensionType);
+        WorldsModInitializer.LOGGER.info("Seed: " + config.getSeed());
+        WorldsModInitializer.LOGGER.info("Difficulty: " + config.getDifficulty().toString());
+
+        RuntimeWorldHandle handler = WorldsModInitializer.fantasy.getOrOpenPersistentWorld(worldID, config);
+
+        WorldsModInitializer.worlds_handlers.put(worldID, handler);
 
         WorldsModInitializer.LOGGER.info("Dimension [" + worldID + "] regenerated from file.");
 
         return 0;
-    }
-
-    static public int sendCurrentPlayerWorld(MinecraftServer mc_server, ServerCommandSource source) {
-        if (source.getPlayer() == null) {
-            return 0;
-        }
-
-        ServerPlayerEntity player = source.getPlayer();
-
-        World currentWorld = player.getWorld();
-        BlockPos currentPos = player.getBlockPos();
-
-        String namespace = currentWorld.getRegistryKey().getValue().getNamespace().toString();
-        String path = currentWorld.getRegistryKey().getValue().getPath().toString();
-
-        player.sendMessage(text_plain("Current world: " + namespace + ":" + path), false);
-        player.sendMessage(text_plain("Current position: " + currentPos.toString()), false);
-
-        return Command.SINGLE_SUCCESS;
     }
 
     private static ConfigurationFile saveNewConfig(ServerWorld world, Identifier dim, long seed) {

@@ -24,15 +24,15 @@ public class AdminCommands {
 
     private int handleCommand(String[] args, ServerCommandSource source) {
         if (args[0].equalsIgnoreCase("create")) {
-            return Handlers.createNew(WorldsModInitializer.server_instance, source, args);
+            return Handlers.CMD_CreateNewWorld(WorldsModInitializer.server_instance, source, args);
         }
 
         if (args[0].equalsIgnoreCase("delete")) {
-            return Handlers.deleteWorld(WorldsModInitializer.server_instance, source, args);
+            return Handlers.CMD_DeleteWorld(WorldsModInitializer.server_instance, source, args);
         }
 
         if (args[0].equalsIgnoreCase("setWorldSpawn")) {
-            return Handlers.setWorldSpawn(WorldsModInitializer.server_instance, source);
+            return Handlers.CMD_SetWorldSpawn(WorldsModInitializer.server_instance, source);
         }
 
         source.sendMessage(WorldsModInitializer.text_plain("Unknown command: " + args[0]));

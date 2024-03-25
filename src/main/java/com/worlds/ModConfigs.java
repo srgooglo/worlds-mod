@@ -46,12 +46,6 @@ public class ModConfigs {
         String finalDir = dimensions_dir + "/" + namespace;
         String finalPathname = finalDir + "/" + path + ".json";
 
-        if (new File(finalPathname).exists()) {
-            new File(finalPathname).delete();
-        }
-
-        if (new File(finalDir).exists()) {
-            new File(finalPathname).delete();
-        }
+        new File(finalPathname).delete();
     }
 }

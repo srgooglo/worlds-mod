@@ -1,6 +1,13 @@
 package com.worlds;
 
+import java.util.HashMap;
+
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
@@ -16,7 +23,7 @@ public class Utils {
         if (difficulty == null) {
             return Difficulty.NORMAL;
         }
-        
+
         return switch (difficulty.toLowerCase()) {
             case "normal" -> Difficulty.NORMAL;
             case "hard" -> Difficulty.HARD;
@@ -74,12 +81,59 @@ public class Utils {
         if (type == null) {
             return "normal";
         }
-        
+
         return switch (type.toLowerCase()) {
             case "normal" -> "minecraft:overworld";
             case "nether" -> "minecraft:the_nether";
             case "end" -> "minecraft:the_end";
             default -> "normal";
         };
+    }
+
+    static public World getCurrentPlayerWorld(MinecraftServer mc_server, ServerCommandSource source) {
+        ServerPlayerEntity player = source.getPlayer();
+
+        if (player == null) {
+            return null;
+        }
+
+        return player.getWorld();
+    }
+
+    static public BlockPos getCurrentPlayerPos(MinecraftServer mc_server, ServerCommandSource source) {
+        ServerPlayerEntity player = source.getPlayer();
+
+        if (player == null) {
+            return null;
+        }
+
+        return player.getBlockPos();
+    }
+
+    static public Identifier getCurrentPlayerWorldID(MinecraftServer mc_server, ServerCommandSource source) {
+        World world = getCurrentPlayerWorld(mc_server, source);
+
+        if (world == null) {
+            return null;
+        }
+
+        return world.getRegistryKey().getValue();
+    }
+
+    static public HashMap<Identifier, ServerWorld> getServerWorlds() {
+        HashMap<Identifier, ServerWorld> worlds = new HashMap<>();
+
+        WorldsModInitializer.server_instance.getWorldRegistryKeys().forEach((r) -> {
+            ServerWorld world = WorldsModInitializer.server_instance.getWorld(r);
+            worlds.put(r.getValue(), world);
+        });
+
+        return worlds;
+    }
+
+    static public ServerWorld getServerWorldByID(Identifier id) {
+        HashMap<Identifier, ServerWorld> worlds = getServerWorlds();
+
+        return worlds.get(id);
     }
 }
