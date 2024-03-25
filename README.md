@@ -21,15 +21,25 @@ Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidM
 /aworlds setWorldSpawn
 ``
 
+### Delete a dimension [BROKEN]
+`` 
+/aworlds delete <id>
+``
+
 ## User Commands
 ### List all dimensions
 ``
 /worlds list
 ``
 
-### Tp to a dimension
+### Teleport to a dimension
 ``
 /worlds tp <id>
+``
+
+### Teleport to current dimension spawn
+``
+/worlds spawn
 ``
 
 ### Get current dimension info
