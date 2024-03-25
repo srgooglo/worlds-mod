@@ -27,6 +27,7 @@ May need import the lib
 > For the moment you can delete the dimensions by navigating to the mod configuration directory `config/worlds/dimensions/worlds_dimensions/<id>` deleting the .json file of the dimension you want to delete.
 
 > You can also destroy the chunks from your `world/dimensions/worlds_dimensions/<id>` directory.
+
 ``
 /aworlds delete <id>
 ``
