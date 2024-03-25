@@ -1,15 +1,17 @@
 # Worlds
 Multiverse-core plugin but actually is a fabric mod.
-*just for minecraft 1.20.1*
 
-> May need import the lib
-Get from here [https://github.com/NucleoidMC/fantasy/releases/tag/v0.4.11%2B1.20-rc1](https://github.com/NucleoidMC/fantasy/releases/tag/v0.4.11%2B1.20-rc1)
+# Compatibility
+*just for Minecraft 1.20.1 at the moment*
 
-Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidMC/fantasy)
+Use Fabric API version +0.92.0
+
+# Dependencies
+May need import the lib
+[https://github.com/NucleoidMC/fantasy/releases/tag/v0.4.11%2B1.20-rc1](https://github.com/NucleoidMC/fantasy/releases/tag/v0.4.11%2B1.20-rc1)
 
 
 # Commands usage
-
 ## OP Commands
 ### Create a new dimension
 ``
@@ -22,6 +24,9 @@ Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidM
 ``
 
 ### Delete a dimension [BROKEN]
+> For the moment you can delete the dimensions by navigating to the mod configuration directory `config/worlds/dimensions/worlds_dimensions/<id>` deleting the .json file of the dimension you want to delete.
+
+> You can also destroy the chunks from your `world/dimensions/worlds_dimensions/<id>` directory.
 ``
 /aworlds delete <id>
 ``
@@ -46,3 +51,6 @@ Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidM
 ``
 /worlds current
 ``
+
+# Other info
+Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidMC/fantasy)
