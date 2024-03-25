@@ -22,7 +22,7 @@ Using the lib implementation [xyz.nucleoid:fantasy](https://github.com/NucleoidM
 ``
 
 ### Delete a dimension [BROKEN]
-`` 
+``
 /aworlds delete <id>
 ``
 
